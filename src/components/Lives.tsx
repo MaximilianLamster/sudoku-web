@@ -12,7 +12,7 @@ interface HeartProps {
 const Heart = styled.svg<HeartProps>`
   width: 24px;
   height: 24px;
-  stroke: ${(props) => (props.$lost ? "rgba(255, 255, 255, 0.2)" : "#fff")};
+  stroke: ${({ theme, $lost }) => ($lost ? theme.borderColor : theme.textUser)};
   stroke-width: 2;
   fill: none;
   transition: stroke 0.3s ease;

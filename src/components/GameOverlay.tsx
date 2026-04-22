@@ -32,7 +32,7 @@ const OkayButton = styled.button`
   font-size: 1.4rem;
   font-weight: 600;
   color: #fff;
-  background-color: #0d3d3d;
+  background-color: ${({ theme }) => theme.overlayButtonBg};
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 12px;
   cursor: pointer;
@@ -55,8 +55,7 @@ interface GameOverlayProps {
 }
 
 function GameOverlay({ type, onOkay }: GameOverlayProps) {
-  const title =
-    type === "won" ? "Congratulations, You Win" : "You lost";
+  const title = type === "won" ? "Congratulations, You Win" : "You lost";
 
   return (
     <Overlay>

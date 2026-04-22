@@ -6,6 +6,7 @@ interface StyledCellProps {
   $isHighlighted: boolean;
   $isError: boolean;
   $isFlash: boolean;
+  $isSameNumber: boolean;
 }
 
 const Cell = styled.div<StyledCellProps>`
@@ -14,40 +15,50 @@ const Cell = styled.div<StyledCellProps>`
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid
-    ${(props) =>
-      props.$isFlash ? "rgba(244, 67, 54, 0.8)" : "rgba(255, 255, 255, 0.5)"};
   border-radius: 4px;
   font-size: 1.5rem;
   font-weight: 600;
+
+  @media (max-width: 599px) {
+    width: 35px;
+    height: 35px;
+    font-size: 1.1rem;
+  }
   cursor: pointer;
   user-select: none;
   transition: background-color 0.15s ease, box-shadow 0.15s ease,
     border-color 0.15s ease;
-  color: ${(props) => {
-    if (props.$isError) return "#e57373";
-    if (props.$isGiven) return "rgba(255, 255, 255, 0.55)";
-    return "rgba(255, 255, 255, 0.9)";
+
+  color: ${({ theme, $isError, $isGiven }) => {
+    if ($isError) return theme.textError;
+    if ($isGiven) return theme.textGiven;
+    return theme.textUserAccent;
   }};
-  background-color: ${(props) => {
-    if (props.$isFlash) return "rgba(244, 67, 54, 0.1)";
-    if (props.$isHighlighted) return "rgba(255, 255, 255, 0.04)";
+
+  background-color: ${({ theme, $isFlash, $isHighlighted }) => {
+    if ($isFlash) return theme.cellFlashBg;
+    if ($isHighlighted) return theme.cellHighlight;
     return "transparent";
   }};
-  border-width: ${(props) => (props.$isSelected ? "2px" : "1px")};
-  border-color: ${(props) => {
-    if (props.$isFlash) return "rgba(244, 67, 54, 0.6)";
-    if (props.$isSelected) return "rgba(255, 255, 255, 0.8)";
-    return "rgba(255, 255, 255, 0.2)";
+
+  border-width: ${({ $isSelected }) => ($isSelected ? "2px" : "1px")};
+  border-style: solid;
+  border-color: ${({ theme, $isFlash, $isSelected, $isSameNumber }) => {
+    if ($isFlash) return theme.cellFlashBorder;
+    if ($isSelected) return theme.cellSelectedBorder;
+    if ($isSameNumber) return theme.cellSameNumberBorder;
+    return theme.borderColor;
   }};
-  box-shadow: ${(props) =>
-    props.$isSelected ? "0 0 6px 1px rgba(255, 255, 255, 0.4)" : "none"};
+
+  box-shadow: ${({ theme, $isSelected, $isSameNumber }) => {
+    if ($isSelected) return `0 0 6px 1px ${theme.cellSelectedShadow}`;
+    if ($isSameNumber) return `0 0 4px 1px ${theme.cellSameNumberShadow}`;
+    return "none";
+  }};
 
   &:hover {
-    background-color: ${(props) => {
-      if (props.$isFlash) return "rgba(244, 67, 54, 0.15)";
-      return "rgba(255, 255, 255, 0.03)";
-    }};
+    background-color: ${({ theme, $isFlash }) =>
+      $isFlash ? theme.cellFlashHover : theme.cellHighlight};
   }
 `;
 
@@ -63,10 +74,14 @@ const HintDigit = styled.span`
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.45rem;
+  font-size: 0.58rem;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.6);
+  color: ${({ theme }) => theme.hintDigit};
   line-height: 1;
+
+  @media (max-width: 599px) {
+    font-size: 0.4rem;
+  }
 `;
 
 interface SudokuCellProps {
@@ -76,6 +91,7 @@ interface SudokuCellProps {
   isHighlighted: boolean;
   isError: boolean;
   isFlash: boolean;
+  isSameNumber: boolean;
   hints?: Set<number>;
   onClick: () => void;
 }
@@ -87,6 +103,7 @@ function SudokuCell({
   isHighlighted,
   isError,
   isFlash,
+  isSameNumber,
   hints,
   onClick,
 }: SudokuCellProps) {
@@ -111,6 +128,7 @@ function SudokuCell({
       $isHighlighted={isHighlighted}
       $isError={isError}
       $isFlash={isFlash}
+      $isSameNumber={isSameNumber}
       onClick={onClick}
     >
       {renderContent()}

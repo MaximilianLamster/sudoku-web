@@ -17,7 +17,7 @@ export interface UseSudokuGameReturn {
   selectedCell: SelectedCell | null;
   selectCell: (row: number, col: number) => void;
   setCellValue: (value: number) => void;
-  clearCell: () => void;
+  erase: () => void;
   lives: number;
   errorCells: Set<string>;
   flashCells: Set<string>;
@@ -26,7 +26,8 @@ export interface UseSudokuGameReturn {
   isHintMode: boolean;
   toggleHintMode: () => void;
   toggleHint: (value: number) => void;
-  clearHints: () => void;
+  completedNumbers: Set<number>;
+  isSelectedCellErasable: boolean;
 }
 
 function getConflictingCells(
@@ -94,6 +95,34 @@ export function useSudokuGame(difficulty: Difficulty): UseSudokuGameReturn {
     });
     return set;
   }, [conflictMap]);
+
+  // Numbers where all 9 instances are correctly placed (spec 007)
+  const completedNumbers = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const val = puzzle[r][c];
+        if (val !== 0 && val === solution[r][c]) {
+          counts.set(val, (counts.get(val) ?? 0) + 1);
+        }
+      }
+    }
+    const completed = new Set<number>();
+    counts.forEach((count, num) => {
+      if (count === 9) completed.add(num);
+    });
+    return completed;
+  }, [puzzle, solution]);
+
+  // Erase button is active when selected cell has a wrong value or has hints only (spec 007 + 008)
+  const isSelectedCellErasable = useMemo(() => {
+    if (!selectedCell) return false;
+    const { row, col } = selectedCell;
+    const cellKey = `${row}-${col}`;
+    if (errorCells.has(cellKey)) return true;
+    if (puzzle[row][col] === 0 && hints.has(cellKey)) return true;
+    return false;
+  }, [selectedCell, errorCells, puzzle, hints]);
 
   const selectCell = useCallback((row: number, col: number) => {
     setSelectedCell((prev) =>
@@ -172,10 +201,14 @@ export function useSudokuGame(difficulty: Difficulty): UseSudokuGameReturn {
       const { row, col } = selectedCell;
       if (initialPuzzle[row][col] !== 0) return;
 
+      // Guard: correct cells cannot be overwritten (spec 007)
+      const currentValue = puzzle[row][col];
+      if (currentValue !== 0 && currentValue === solution[row][col]) return;
+
       const isCorrect = value === solution[row][col];
       const cellKey = `${row}-${col}`;
 
-      // Clear hints for this cell
+      // Clear hints for this cell (spec 008)
       setHints((prev) => {
         if (!prev.has(cellKey)) return prev;
         const next = new Map(prev);
@@ -191,8 +224,7 @@ export function useSudokuGame(difficulty: Difficulty): UseSudokuGameReturn {
       });
 
       if (isCorrect) {
-        // Deselect cell on correct answer
-        setSelectedCell(null);
+        // Cell stays selected after correct answer (spec 009)
 
         // Remove error state and conflicts if overwriting a previous wrong answer
         setErrorCells((prev) => {
@@ -251,35 +283,8 @@ export function useSudokuGame(difficulty: Difficulty): UseSudokuGameReturn {
         });
       }
     },
-    [selectedCell, initialPuzzle, solution, gameState, removeHintsForNumber]
+    [selectedCell, initialPuzzle, solution, puzzle, gameState, removeHintsForNumber]
   );
-
-  const clearCell = useCallback(() => {
-    if (gameState !== "playing") return;
-    if (!selectedCell) return;
-    const { row, col } = selectedCell;
-    if (initialPuzzle[row][col] !== 0) return;
-
-    const cellKey = `${row}-${col}`;
-    setErrorCells((prev) => {
-      if (!prev.has(cellKey)) return prev;
-      const next = new Set(prev);
-      next.delete(cellKey);
-      return next;
-    });
-    setConflictMap((prev) => {
-      if (!prev.has(cellKey)) return prev;
-      const next = new Map(prev);
-      next.delete(cellKey);
-      return next;
-    });
-
-    setPuzzle((prev) => {
-      const next = prev.map((r) => [...r]);
-      next[row][col] = 0;
-      return next;
-    });
-  }, [selectedCell, initialPuzzle, gameState]);
 
   const toggleHintMode = useCallback(() => {
     setIsHintMode((prev) => !prev);
@@ -291,7 +296,7 @@ export function useSudokuGame(difficulty: Difficulty): UseSudokuGameReturn {
       if (!selectedCell) return;
       const { row, col } = selectedCell;
       if (initialPuzzle[row][col] !== 0) return;
-      if (puzzle[row][col] > 0) return;
+      if (puzzle[row][col] > 0) return; // only on empty cells (spec 008)
 
       const cellKey = `${row}-${col}`;
 
@@ -337,20 +342,43 @@ export function useSudokuGame(difficulty: Difficulty): UseSudokuGameReturn {
     [selectedCell, initialPuzzle, puzzle, gameState]
   );
 
-  const clearHints = useCallback(() => {
+  // Unified context-sensitive erase (spec 008)
+  const erase = useCallback(() => {
     if (gameState !== "playing") return;
     if (!selectedCell) return;
     const { row, col } = selectedCell;
     if (initialPuzzle[row][col] !== 0) return;
 
     const cellKey = `${row}-${col}`;
-    setHints((prev) => {
-      if (!prev.has(cellKey)) return prev;
-      const next = new Map(prev);
-      next.delete(cellKey);
-      return next;
-    });
-  }, [selectedCell, initialPuzzle, gameState]);
+
+    if (errorCells.has(cellKey)) {
+      // Clear wrong value
+      setErrorCells((prev) => {
+        const next = new Set(prev);
+        next.delete(cellKey);
+        return next;
+      });
+      setConflictMap((prev) => {
+        if (!prev.has(cellKey)) return prev;
+        const next = new Map(prev);
+        next.delete(cellKey);
+        return next;
+      });
+      setPuzzle((prev) => {
+        const next = prev.map((r) => [...r]);
+        next[row][col] = 0;
+        return next;
+      });
+    } else if (puzzle[row][col] === 0 && hints.has(cellKey)) {
+      // Clear hints on empty cell
+      setHints((prev) => {
+        if (!prev.has(cellKey)) return prev;
+        const next = new Map(prev);
+        next.delete(cellKey);
+        return next;
+      });
+    }
+  }, [selectedCell, initialPuzzle, errorCells, puzzle, hints, gameState]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -363,7 +391,7 @@ export function useSudokuGame(difficulty: Difficulty): UseSudokuGameReturn {
         if (num >= 1 && num <= 9) {
           if (isHintMode) {
             toggleHint(num);
-          } else {
+          } else if (!completedNumbers.has(num)) {
             setCellValue(num);
           }
         }
@@ -371,17 +399,13 @@ export function useSudokuGame(difficulty: Difficulty): UseSudokuGameReturn {
       }
 
       if (e.key === "Backspace" || e.key === "Delete") {
-        if (isHintMode) {
-          clearHints();
-        } else {
-          clearCell();
-        }
+        erase();
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedCell, setCellValue, clearCell, gameState, isHintMode, toggleHint, clearHints]);
+  }, [selectedCell, setCellValue, erase, gameState, isHintMode, toggleHint, completedNumbers]);
 
   return {
     solution,
@@ -390,7 +414,7 @@ export function useSudokuGame(difficulty: Difficulty): UseSudokuGameReturn {
     selectedCell,
     selectCell,
     setCellValue,
-    clearCell,
+    erase,
     lives,
     errorCells,
     flashCells,
@@ -399,6 +423,7 @@ export function useSudokuGame(difficulty: Difficulty): UseSudokuGameReturn {
     isHintMode,
     toggleHintMode,
     toggleHint,
-    clearHints,
+    completedNumbers,
+    isSelectedCellErasable,
   };
 }

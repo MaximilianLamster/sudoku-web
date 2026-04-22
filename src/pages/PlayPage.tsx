@@ -7,6 +7,7 @@ import SudokuGrid from "../components/SudokuGrid";
 import NumberPad from "../components/NumberPad";
 import Lives from "../components/Lives";
 import GameOverlay from "../components/GameOverlay";
+import ThemeToggle from "../components/ThemeToggle";
 
 const DIFFICULTY_MAP: Record<string, Difficulty> = {
   easy: Difficulty.EASY,
@@ -34,11 +35,16 @@ const Container = styled.div<ContainerProps>`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #071e1e, #050505);
-  color: #fff;
+  background: ${({ theme }) => theme.background};
+  color: ${({ theme }) => theme.textUser};
   padding: 2rem;
   position: relative;
-  animation: ${(props) => (props.$fading ? fadeOut : fadeIn)} ${(props) => (props.$fading ? "0.4s" : "0.5s")} ease forwards;
+
+  @media (max-width: 599px) {
+    padding: 5rem 1rem 1rem;
+  }
+  animation: ${(props) => (props.$fading ? fadeOut : fadeIn)} ${(props) =>
+    props.$fading ? "0.4s" : "0.5s"} ease forwards;
 `;
 
 const TopBar = styled.div`
@@ -56,7 +62,7 @@ const TopBar = styled.div`
 const Divider = styled.div`
   width: 100%;
   height: 1px;
-  background: rgba(255, 255, 255, 0.15);
+  background: ${({ theme }) => theme.divider};
   margin: 1.5rem 0;
 `;
 
@@ -66,8 +72,15 @@ const GameContent = styled.div`
   align-items: center;
 `;
 
+const LivesRow = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-bottom: 0.5rem;
+`;
+
 const BackButton = styled.button`
-  color: rgba(255, 255, 255, 0.7);
+  color: ${({ theme }) => theme.backButton};
   font-size: 0.9rem;
   text-decoration: none;
   background: none;
@@ -75,7 +88,7 @@ const BackButton = styled.button`
   cursor: pointer;
 
   &:hover {
-    color: #fff;
+    color: ${({ theme }) => theme.textUser};
   }
 `;
 
@@ -84,7 +97,7 @@ const DifficultyLabel = styled.span`
   bottom: 1rem;
   right: 1.5rem;
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: ${({ theme }) => theme.difficultyLabel};
   text-transform: capitalize;
 `;
 
@@ -119,7 +132,7 @@ function PlayPageInner({ difficulty, label }: PlayPageInnerProps) {
     selectedCell,
     selectCell,
     setCellValue,
-    clearCell,
+    erase,
     lives,
     errorCells,
     flashCells,
@@ -128,7 +141,8 @@ function PlayPageInner({ difficulty, label }: PlayPageInnerProps) {
     isHintMode,
     toggleHintMode,
     toggleHint,
-    clearHints,
+    completedNumbers,
+    isSelectedCellErasable,
   } = useSudokuGame(difficulty);
 
   const handleNumberClick = useCallback(
@@ -142,21 +156,16 @@ function PlayPageInner({ difficulty, label }: PlayPageInnerProps) {
     [isHintMode, toggleHint, setCellValue]
   );
 
-  const handleErase = useCallback(() => {
-    if (isHintMode) {
-      clearHints();
-    } else {
-      clearCell();
-    }
-  }, [isHintMode, clearHints, clearCell]);
-
   return (
     <Container $fading={fading}>
       <TopBar>
         <BackButton onClick={fadeToHome}>← Zurück</BackButton>
-        <Lives lives={lives} />
+        <ThemeToggle />
       </TopBar>
       <GameContent>
+        <LivesRow>
+          <Lives lives={lives} />
+        </LivesRow>
         <SudokuGrid
           puzzle={puzzle}
           initialPuzzle={initialPuzzle}
@@ -169,9 +178,11 @@ function PlayPageInner({ difficulty, label }: PlayPageInnerProps) {
         <Divider />
         <NumberPad
           onNumberClick={handleNumberClick}
-          onErase={handleErase}
+          onErase={erase}
           isHintMode={isHintMode}
           onToggleHintMode={toggleHintMode}
+          completedNumbers={completedNumbers}
+          isErasable={isSelectedCellErasable}
         />
       </GameContent>
       <DifficultyLabel>{label}</DifficultyLabel>

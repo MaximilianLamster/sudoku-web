@@ -9,7 +9,7 @@ const GlobalStyle = createGlobalStyle`
 
   body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #071e1e, #050505);
+    background: ${({ theme }) => theme.background};
     min-height: 100vh;
   }
 `;

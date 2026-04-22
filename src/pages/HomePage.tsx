@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled, { keyframes } from "styled-components";
+import ThemeToggle from "../components/ThemeToggle";
 
 const fadeIn = keyframes`
   from { opacity: 0; }
@@ -22,12 +23,22 @@ const Container = styled.div<ContainerProps>`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #071e1e, #050505);
-  animation: ${(props) => (props.$fading ? fadeOut : fadeIn)} ${(props) => (props.$fading ? "0.4s" : "0.5s")} ease forwards;
+  background: ${({ theme }) => theme.background};
+  position: relative;
+  animation: ${(props) => (props.$fading ? fadeOut : fadeIn)} ${(props) =>
+    props.$fading ? "0.4s" : "0.5s"} ease forwards;
+`;
+
+const TopBar = styled.div`
+  position: fixed;
+  top: 0;
+  right: 0;
+  padding: 1rem 1.5rem;
+  z-index: 10;
 `;
 
 const Title = styled.h1`
-  color: rgba(255, 255, 255, 0.7);
+  color: ${({ theme }) => theme.titleColor};
   font-size: 2rem;
   font-weight: 300;
   letter-spacing: 0.3em;
@@ -42,24 +53,28 @@ const ButtonGroup = styled.div`
 `;
 
 interface DifficultyButtonProps {
-  $color: string;
+  $variant: "easy" | "medium" | "hard";
 }
 
 const DifficultyButton = styled.button<DifficultyButtonProps>`
   padding: 1rem 3rem;
   font-size: 1.4rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
-  background-color: ${(props) => props.$color};
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: ${({ theme }) => theme.textUser};
+  background-color: ${({ theme, $variant }) => {
+    if ($variant === "easy") return theme.diffButtonEasyBg;
+    if ($variant === "medium") return theme.diffButtonMediumBg;
+    return theme.diffButtonHardBg;
+  }};
+  border: 1px solid ${({ theme }) => theme.diffButtonBorder};
   border-radius: 12px;
   cursor: pointer;
   min-width: 240px;
   transition: box-shadow 0.3s ease, transform 0.15s ease, border-color 0.3s ease;
 
   &:hover {
-    border-color: rgba(255, 255, 255, 0.7);
-    box-shadow: 0 0 15px 3px rgba(255, 255, 255, 0.2);
+    border-color: ${({ theme }) => theme.diffButtonBorderHover};
+    box-shadow: 0 0 15px 3px ${({ theme }) => theme.diffButtonShadowHover};
     transform: scale(1.05);
   }
 
@@ -79,22 +94,25 @@ function HomePage() {
 
   return (
     <Container $fading={fading}>
-      <Title>Designer Sudoku</Title>
+      <TopBar>
+        <ThemeToggle />
+      </TopBar>
+      <Title>Simple Sudoku</Title>
       <ButtonGroup>
         <DifficultyButton
-          $color="#0d3d3d"
+          $variant="easy"
           onClick={() => handleClick("/play/easy")}
         >
           Easy
         </DifficultyButton>
         <DifficultyButton
-          $color="#082020"
+          $variant="medium"
           onClick={() => handleClick("/play/medium")}
         >
           Medium
         </DifficultyButton>
         <DifficultyButton
-          $color="#0a0a0a"
+          $variant="hard"
           onClick={() => handleClick("/play/hard")}
         >
           Hard
